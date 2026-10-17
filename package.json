@@ -1,0 +1,9 @@
+{
+  "name": "self-healing-tool-registry-v3",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local simulation of safe agent recovery from runtime API schema drift",
+  "scripts": { "start": "node src/app.js", "test": "node --test" },
+  "engines": { "node": ">=18" }
+}

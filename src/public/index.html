@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#10131d">
+  <title>Self-Healing Tool Registry</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark">S</div><div><h1>Self-Healing Tool Registry</h1><p>Runtime API Schema Drift Detection and Recovery</p></div></div>
+      <div class="health-wrap"><span class="health-dot"></span><span id="healthText">Checking services…</span><span class="pill">LOCAL SIMULATION</span></div>
+    </header>
+    <main>
+      <section class="intro">
+        <div><p class="eyebrow">AGENT RELIABILITY LAB / 01</p><h2>When the API changes,<br><span>the agent adapts.</span></h2><p class="intro-copy">Trigger a breaking schema change and compare a static baseline with Sentinel's allowlisted diagnosis, tool patch, retry, and response validation.</p></div>
+        <div class="active-card"><span class="small-label">ACTIVE SCENARIO</span><strong id="activeScenario">Original schema</strong><p id="scenarioDescription">No schema drift is active.</p><div class="active-actions"><button class="btn btn-quiet" id="resetBtn">↺ Reset schema</button><button class="btn btn-primary" id="runBothBtn">▶ Run both agents</button></div></div>
+      </section>
+      <section class="section">
+        <div class="section-head"><div><p class="eyebrow">01 / CONTROL PLANE</p><h3>Runtime breakpoints</h3></div><span class="muted">Select one mutation to activate it</span></div>
+        <div class="scenario-grid" id="scenarioGrid">
+          <button class="scenario-card active" data-scenario="baseline"><span class="scenario-number">00</span><strong>Original schema</strong><small>No drift</small></button>
+          <button class="scenario-card" data-scenario="parameter_rename"><span class="scenario-number">01</span><strong>Parameter rename</strong><small><code>order_id → id</code></small></button>
+          <button class="scenario-card" data-scenario="response_type"><span class="scenario-number">02</span><strong>Response type</strong><small><code>number → string</code></small></button>
+          <button class="scenario-card" data-scenario="authentication"><span class="scenario-number">03</span><strong>Auth required</strong><small><code>Bearer token</code></small></button>
+          <button class="scenario-card" data-scenario="nested_response"><span class="scenario-number">04</span><strong>Nested response</strong><small><code>root → data</code></small></button>
+          <button class="scenario-card" data-scenario="required_parameter"><span class="scenario-number">05</span><strong>New required param</strong><small><code>source</code></small></button>
+        </div>
+        <div class="run-actions"><button class="btn btn-quiet" id="runBaselineBtn">Run baseline only</button><button class="btn btn-quiet" id="runSentinelBtn">Run Sentinel only</button><button class="btn btn-primary" id="runAllBtn">Run all five scenarios <span>↗</span></button><span id="runStatus" class="run-status">Ready to run</span></div>
+      </section>
+      <section class="section nl-section">
+        <div class="section-head"><div><p class="eyebrow">02 / NATURAL-LANGUAGE TOOL EXECUTION</p><h3>Ask Sentinel to call a tool</h3></div><span class="muted">Try “check order 123”</span></div>
+        <form id="naturalLanguageForm" class="nl-form"><input id="naturalLanguageInput" aria-label="Natural-language request" placeholder="e.g. show order status 123" value="check order 123" required><button class="btn btn-primary" type="submit">Translate + execute</button></form>
+        <pre id="naturalLanguageResult" class="json-view nl-result">Your translated HTTP request and API response will appear here.</pre>
+      </section>
+      <section class="section">
+        <div class="section-head"><div><p class="eyebrow">03 / OBSERVABILITY</p><h3>Recovery metrics</h3></div><span class="muted">Calculated from actual recorded runs · <button id="refreshBtn" class="text-button">refresh ↻</button></span></div>
+        <div class="metrics-grid">
+          <article class="metric-card"><div class="metric-top"><span>Adaptation rate</span><span class="info" title="Successful Sentinel recoveries divided by attempts that required adaptation.">i</span></div><strong id="adaptationMetric">—</strong><p>Successful recoveries / recovery attempts</p></article>
+          <article class="metric-card"><div class="metric-top"><span>Mean time to recovery</span><span class="info" title="Average elapsed time from beginning diagnosis until a successful retry, in milliseconds.">i</span></div><strong id="mttrMetric">—</strong><p>Successful recovery time · ms</p></article>
+          <article class="metric-card"><div class="metric-top"><span>Baseline success rate</span><span class="info" title="Successful baseline runs divided by all baseline runs.">i</span></div><strong id="baselineMetric">—</strong><p>Baseline successes / baseline runs</p></article>
+          <article class="metric-card"><div class="metric-top"><span>Request overhead</span><span class="info" title="Sentinel HTTP attempts minus baseline HTTP attempts. This is not LLM token overhead.">i</span></div><strong id="overheadMetric">—</strong><p>Additional HTTP attempts vs baseline</p></article>
+        </div>
+      </section>
+      <section class="two-col section">
+        <div class="panel">
+          <div class="panel-head"><div><p class="eyebrow">04 / LIVE TRACE</p><h3>Event stream</h3></div><span id="eventCount" class="count-pill">0 events</span></div>
+          <div id="eventList" class="event-list empty"><div class="empty-icon">⌁</div><strong>Waiting for an agent run</strong><p>Requests, diagnoses, patches, and validations will appear here.</p></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><p class="eyebrow">05 / TOOL REGISTRY</p><h3>Sentinel definition</h3></div><span class="pill pill-purple">PATCHABLE</span></div>
+          <div class="registry-meta"><span class="registry-dot"></span> Versioned active definition · safety gate</div>
+          <pre id="registryJson" class="json-view"></pre>
+          <div class="panel-subhead"><strong>Patch history</strong><span id="patchCount" class="muted">0 patches</span></div>
+          <div id="patchList" class="patch-list empty-mini">No patches yet. Trigger a schema drift and run Sentinel.</div>
+        </div>
+      </section>
+      <section class="section">
+        <div class="section-head"><div><p class="eyebrow">06 / SIDE-BY-SIDE</p><h3>Agent comparison</h3></div><span class="muted">Most recent outcomes</span></div>
+        <div class="comparison-grid">
+          <article class="compare-card"><div class="compare-title"><div class="agent-icon baseline-icon">B</div><div><strong>Baseline agent</strong><p>Static tool definition</p></div><span id="baselineState" class="state-tag state-idle">NOT RUN</span></div><div class="compare-stats"><div><span>Requests</span><strong id="baselineRequests">—</strong></div><div><span>Elapsed</span><strong id="baselineElapsed">—</strong></div><div><span>Adapted</span><strong>No</strong></div></div><div class="validation-line"><span>Final validation</span><strong id="baselineValidation">—</strong></div><p id="baselineError" class="error-text"></p></article>
+          <article class="compare-card sentinel-card"><div class="compare-title"><div class="agent-icon sentinel-icon">S</div><div><strong>Sentinel</strong><p>Diagnose · patch · retry</p></div><span id="sentinelState" class="state-tag state-idle">NOT RUN</span></div><div class="compare-stats"><div><span>Requests</span><strong id="sentinelRequests">—</strong></div><div><span>Elapsed</span><strong id="sentinelElapsed">—</strong></div><div><span>Adapted</span><strong id="sentinelAdapted">—</strong></div></div><div class="validation-line"><span>Final validation</span><strong id="sentinelValidation">—</strong></div><p id="sentinelError" class="error-text"></p></article>
+        </div>
+      </section>
+      <footer><span>SELF-HEALING TOOL REGISTRY <span class="footer-dot">●</span> CONTROLLED PROTOTYPE</span><span>Rule-based recovery · No external LLM · No real credentials</span></footer>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
