@@ -1,149 +1,338 @@
-# Self-Healing Tool Registry
+# 🛡️ Sentinel — Self-Healing AI Agent for APIs
 
-A locally runnable hackathon prototype that demonstrates **controlled recovery from runtime API schema drift**. A static baseline agent keeps using an outdated tool definition; Sentinel checks a versioned OpenAPI contract registry, compares contract changes, diagnoses failures, assesses repair impact, validates candidate repairs, applies a versioned tool patch, retries, and rolls back on failed revalidation.
+**An intelligent API reliability system that detects failures, diagnoses contract mismatches, evaluates repair strategies, and restores API functionality with minimal manual intervention.**
 
-> This is a deterministic, rule-based simulation. It does not call an external LLM and does not claim to repair arbitrary API changes.
+## 📌 Overview
 
-## Features
+Sentinel is a self-healing API agent designed to identify and resolve API failures caused by contract changes, schema mismatches, unexpected responses, and other integration issues.
 
-- Node HTTP dashboard server on port `3000`; mock order API starts automatically on port `3001`.
-- Five selectable schema-drift scenarios: parameter rename, response type change, authentication requirement, nested response, and a new required parameter.
-- Twelve modular engine responsibilities, including a persistent versioned tool registry and OpenAPI 3.1 specification snapshots.
-- Natural-language-to-HTTP demo endpoint and dashboard form (e.g. `check order 123`).
-- Deterministic diagnosis and safety checks; optional LLM selection among prevalidated repair candidates when an OpenAI-compatible API key is configured.
-- Static baseline and self-healing Sentinel with independent local tool definitions.
-- Actual HTTP requests, response type/path validation, event stream, patch history, and run-based metrics.
-- Responsive dashboard; run one agent, both agents, or all five scenarios.
-- Node's built-in test runner.
+Traditional API integrations often depend on static configurations and manual debugging. When a third-party API changes its response structure or violates its expected contract, dependent applications can break until developers identify and fix the issue.
 
-## Architecture
+Sentinel introduces an intelligent recovery pipeline that monitors API behavior, detects discrepancies, diagnoses failures, evaluates possible corrective actions, and selects a suitable recovery strategy.
+
+Its goal is to reduce manual intervention, minimize downtime, and make API integrations more resilient.
+
+## 🎯 Problem Statement
+
+Third-party APIs can become unreliable when:
+
+- Response fields are renamed, removed, or modified.
+- Expected request or response schemas change.
+- API contracts no longer match the integration's assumptions.
+- A dependent service breaks because an upstream API changes.
+- Developers must manually investigate and patch integration failures.
+
+Static API integrations generally cannot independently diagnose these changes, assess their impact, and safely recover from them.
+
+**Sentinel aims to automate this recovery process through a combination of deterministic engineering and AI-assisted decision-making.**
+
+## 💡 Proposed Solution
+
+Sentinel implements a structured self-healing pipeline that combines API contract analysis, failure diagnosis, dependency impact assessment, candidate repair generation, safety validation, and recovery mechanisms.
+
+### Core Engines
+
+#### 1. Tool Registry
+
+Maintains information about registered API tools, including their endpoints, HTTP methods, configuration, and relevant dependencies.
+
+**Purpose:** Provides a structured source of information about the APIs Sentinel can inspect and interact with.
+
+#### 2. API Execution Layer
+
+Executes HTTP requests against registered APIs using the supplied request parameters.
+
+**Purpose:** Enables Sentinel to observe actual API behavior rather than relying exclusively on predefined mock responses.
+
+#### 3. Failure Monitoring Engine
+
+Monitors API execution results and identifies failures, unexpected responses, and potential contract violations.
+
+**Purpose:** Detects when an API integration requires investigation or recovery.
+
+#### 4. OpenAPI Specification Registry
+
+Stores or references the expected API contracts, including endpoint definitions, request parameters, and response schemas.
+
+**Purpose:** Establishes the expected behavior against which actual API responses can be evaluated.
+
+#### 5. Contract Difference Engine
+
+Compares expected API contracts with observed API behavior to identify structural differences.
+
+For example, an integration may expect a response containing `user_id`, while the API returns `id`.
+
+**Purpose:** Converts an unexpected API response into a structured description of the mismatch.
+
+#### 6. AI Diagnosis Engine
+
+Uses the detected failure information and relevant API context to generate a diagnosis of the likely cause.
+
+**Purpose:** Helps explain why an API integration failed and identifies the mismatch that a repair strategy needs to address.
+
+#### 7. Blast Radius Analysis Engine
+
+Analyzes dependencies between API tools and downstream consumers to estimate which components could be affected by a failure or proposed change.
+
+**Purpose:** Helps Sentinel consider the potential impact of a repair instead of evaluating the failing endpoint in isolation.
+
+#### 8. AI Action Plan Engine
+
+Generates candidate corrective actions based on the diagnosis and available API context.
+
+Possible strategies may include field mapping, response transformation, or other compatible adjustments, depending on the failure.
+
+**Purpose:** Produces possible recovery strategies instead of immediately applying the first proposed fix.
+
+#### 9. Counterfactual Validation Engine
+
+Evaluates alternative repair candidates against relevant correctness and safety conditions before a recovery action is selected.
+
+Rather than asking only, “Can this change fix the immediate error?”, Sentinel aims to evaluate, “Which proposed change resolves the failure while introducing the least risk to existing behavior?”
+
+**Purpose:** Supports safer repair selection by comparing candidate outcomes before committing to a change.
+
+#### 10. Instant Rollback Mechanism
+
+Provides a recovery path for reverting a repair when the implementation supports restoration of the previous configuration or state.
+
+**Purpose:** Limits the consequences of an unsuccessful repair and helps restore the last known working configuration.
+
+## 🔄 System Workflow
+
+1. **Register:** Load the API tool configuration and its expected contract.
+2. **Execute:** Send an HTTP request to the target API.
+3. **Monitor:** Inspect the execution result for failures or unexpected behavior.
+4. **Compare:** Identify differences between the expected contract and actual response.
+5. **Diagnose:** Determine the likely cause of the failure using the AI Diagnosis Engine.
+6. **Assess impact:** Analyze dependencies and the potential blast radius.
+7. **Generate repairs:** Produce candidate corrective actions through the AI Action Plan Engine.
+8. **Validate alternatives:** Evaluate candidates using the Counterfactual Validation Engine.
+9. **Recover:** Select and apply an appropriate repair when the implementation permits it.
+10. **Verify and roll back:** Check the outcome and revert the change if recovery fails and rollback is available.
+
+The exact execution order and available recovery actions depend on the implemented pipeline and its configured safeguards.
+
+## ⭐ Key Differentiators
+
+### 1. AI-Assisted Diagnosis and Repair Planning
+
+Sentinel goes beyond identifying an error by using failure context to explain likely causes and propose corrective actions.
+
+### 2. Counterfactual Repair Validation
+
+Instead of blindly applying the first suggested fix, Sentinel evaluates alternative repair candidates against defined conditions.
+
+This promotes more deliberate repair selection, with the aim of preserving existing API behavior while resolving the detected failure.
+
+### 3. Blast Radius Awareness
+
+By considering dependencies between tools and downstream consumers, Sentinel can account for the wider consequences of a proposed change.
+
+### 4. Rollback-Oriented Recovery
+
+Where supported by the implementation, rollback provides a way to recover from a repair that produces an unsuccessful result.
+
+## 🏗️ High-Level Architecture
 
 ```text
-Browser dashboard (HTML/CSS/vanilla JS)
-             │ REST /api/*
-             ▼
-     Node HTTP dashboard server :3000
-       ├── Scenario controls + in-memory run history
-       ├── Baseline agent (immutable original definition)
-       ├── Sentinel orchestration
-       │    ├── Failure monitor + OpenAPI specification registry
-       │    ├── Contract differences + diagnosis + blast-radius assessment
-       │    ├── Action plan + counterfactual safety gate
-       │    └── Versioned patch + revalidation + rollback + metrics
-       ├── Versioned active tool registry
-       └── Mock order API server :3001
-              ├── GET /api/schema and /openapi.json
-              ├── GET /api/scenario
-              └── GET /api/orders
+                 API Request
+                      |
+                      v
+              Tool Registry
+                      |
+                      v
+              API Execution
+                      |
+                      v
+             Failure Monitor
+                      |
+                      v
+          OpenAPI Contract Registry
+                      |
+                      v
+           Contract Difference Engine
+                      |
+                      v
+              AI Diagnosis Engine
+                      |
+                      v
+           Blast Radius Analysis
+                      |
+                      v
+             AI Action Plan Engine
+                      |
+                      v
+        Counterfactual Validation Engine
+                      |
+                      v
+              Repair Selection
+                      |
+                      v
+              Apply Correction
+                      |
+                      v
+             Verify API Behavior
+                      |
+               +------+------+
+               |             |
+             Success       Failure
+               |             |
+               v             v
+             Finish      Instant Rollback
 ```
 
-Run history, tool versions, and OpenAPI snapshots are in memory and reset when the process restarts. The dashboard's “Run both agents” action runs each agent against the same active scenario; neither agent can modify the API schema, and the baseline definition never adapts. Sentinel only commits a candidate tool definition after the retry passes response validation.
+*This diagram represents the conceptual pipeline; implementation-specific branches may differ.*
 
-## Supported mutations
+## 🧰 Technology Stack
 
-| Scenario | Mock API behavior | Sentinel repair |
-|---|---|---|
-| Parameter rename | Requires `id` instead of `order_id` | Renames its query parameter |
-| Response type | `quantity` is a string instead of a number | Updates expected response type |
-| Authentication | Requires `Authorization: Bearer demo-sentinel-token` | Adds the local synthetic token |
-| Nested response | Fields are nested under `data` | Updates response path |
-| New required parameter | Requires `source` | Adds approved `source=dashboard-demo` |
+The project is designed around a JavaScript backend architecture.
 
-For the new required parameter, the value is a fixed demo policy. **A production agent must not guess business-critical parameter values**; they need to come from an approved configuration or policy. Sentinel only accepts the endpoint, parameter names, response fields/types, nesting path, and auth scheme explicitly allowlisted in code. It does not execute instructions from API response bodies or patch arbitrary endpoints.
+| Technology | Purpose |
+|---|---|
+| Node.js | JavaScript runtime |
+| Express.js | Backend application and API routing |
+| JavaScript | Engine implementation and orchestration |
+| HTTP / REST | API communication |
+| OpenAPI | API contract representation |
+| Large Language Models (LLMs) | AI-assisted diagnosis and repair planning, where configured |
+| Git and GitHub | Version control and collaboration |
 
-## Metrics
+Additional technologies, external services, or persistence layers should be listed here only if they are actually configured and used in the repository.
 
-- **Adaptation rate:** successful Sentinel recoveries ÷ Sentinel runs that required adaptation.
-- **MTTR:** mean time from starting diagnosis to successful retry, for successful recoveries, in milliseconds.
-- **Baseline success rate:** successful baseline runs ÷ all baseline runs.
-- **Request overhead:** Sentinel HTTP request attempts minus baseline HTTP request attempts. This is a request-count metric, **not LLM token overhead**.
+## 🧪 Example Failure Scenario
 
-Metrics show `—` until applicable runs have been recorded. All values are derived from in-memory run records, not sample values.
+Consider an API that originally returns:
 
-## Prerequisites and setup
+```json
+{
+  "user_id": "101",
+  "name": "Saniya",
+  "email": "saniya@example.com"
+}
+```
 
-1. Install Node.js 18 or later.
-2. Extract this ZIP.
-3. In the extracted folder, run (the project uses Node built-ins only, so installation does not download packages):
+A third-party API changes its response to:
 
-   ```bash
-   npm install
-   npm start
-   ```
+```json
+{
+  "id": "101",
+  "name": "Saniya",
+  "email": "saniya@example.com"
+}
+```
 
-4. Open [http://localhost:3000](http://localhost:3000).
+An integration expecting `user_id` may now fail because the identifier is returned under `id`.
 
-The dashboard starts the mock API automatically. Do not start a second copy of the mock API on port `3001`. To change ports, set `PORT` and `MOCK_API_PORT` environment variables together; if changing the mock API port, also set `MOCK_API_URL` to the corresponding URL for the agent module.
+Sentinel's intended recovery process is:
 
-## Tests
+1. Detect the unexpected response structure.
+2. Identify the field mismatch through contract comparison.
+3. Diagnose the likely cause of the failure.
+4. Generate possible corrective actions, such as mapping `id` to `user_id`.
+5. Assess the potential impact on dependent components.
+6. Evaluate candidate repairs against correctness and safety conditions.
+7. Apply the selected correction when supported.
+8. Verify the result and roll back if necessary.
+
+This example illustrates a possible field-mapping recovery strategy; the actual behavior depends on the repository's implemented engines and validation rules.
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js and npm
+- Git
+- A configured API endpoint for testing
+- Any required environment variables or AI-provider credentials, if applicable
+
+### Installation
+
+Clone the repository:
 
 ```bash
-npm test
+git clone https://github.com/BSP-C/Kintsugi_self_healing_ai_agent.git
 ```
 
-The tests use Node's built-in `node:test` runner and verify all five scenarios, baseline failures, Sentinel recoveries, response validation, authentication, required parameters, reset behavior, and metric calculations. Tests bind to port `3001`, so ensure no other process is using it.
-
-## REST endpoints
-
-| Method | Route | Purpose |
-|---|---|---|
-| `GET` | `/api/health` | Dashboard and mock service status |
-| `GET` | `/api/schema` | Current normalized API schema |
-| `GET` | `/api/openapi` | Current OpenAPI 3.1 document |
-| `POST` | `/api/execute-natural-language` | Translate a supported natural-language order request and execute its HTTP call |
-| `GET` | `/api/scenario` | Active scenario and scenario list |
-| `POST` | `/api/scenario/:id` | Activate a supported scenario |
-| `POST` | `/api/reset` | Restore original schema |
-| `POST` | `/api/run/baseline` | Run static baseline |
-| `POST` | `/api/run/sentinel` | Run Sentinel |
-| `POST` | `/api/run/both` | Run both against active schema |
-| `POST` | `/api/run/all` | Run all five scenarios sequentially |
-| `GET` | `/api/metrics` | Current calculated metrics |
-| `GET` | `/api/events` | Event history |
-| `GET` | `/api/patches` | Patch history |
-| `GET` | `/api/runs` | Recorded agent runs |
-| `GET` | `/api/registry` | Original tool definition |
-| `GET` | `/api/registry/sentinel` | Registry explanation and original definition |
-
-## Troubleshooting
-
-- **Port already in use:** stop the process using `3000` or `3001`, or configure both service ports consistently.
-- **Sentinel cannot reach the mock API:** make sure the mock server is running and `MOCK_API_URL` points to it.
-- **No metric values yet:** run one of the agents. Empty values are intentional until a relevant measurement exists.
-- **Browser says service connection issue:** check the terminal for startup errors and open `/api/health`.
-- **Google Fonts unavailable:** the interface falls back to system fonts; fonts are decorative only.
-
-## Security and limitations
-
-- The Bearer token is a fake local demo token. Never put production credentials in this project.
-- Recovery is rule-based and limited to known changes. Unknown parameter names, endpoint changes, unsupported auth schemes, and arbitrary nesting are rejected.
-- The API specification is trusted only for diagnosis within the allowlist. A real integration would need stronger schema provenance, authorization, audit controls, secret management, and tests before applying patches.
-- This prototype uses in-memory state and is not intended for production deployment.
-
-## Runtime repair configuration
-
-The repair engine is schema-driven: it compares the active tool definition with the live API schema and does not contain scenario-specific parameter names or response fields. The natural-language demo currently supports order-status requests such as `check order 123`; its parser is a small deterministic intent parser, not a general-purpose language model. The included mock API still has named scenarios because they are fixtures for demonstrating API drift.
-
-For LLM-selected counterfactual repairs, configure an OpenAI-compatible chat-completions endpoint:
+Navigate into the project:
 
 ```bash
-# Windows PowerShell
-$env:OPENAI_API_KEY="your-api-key"
-$env:OPENAI_MODEL="gpt-4o-mini"
-# Optional for an OpenAI-compatible provider
-$env:OPENAI_BASE_URL="https://api.openai.com/v1/chat/completions"
+cd Kintsugi_self_healing_ai_agent
 ```
 
-If `OPENAI_API_KEY` is absent or the LLM call fails, the prototype uses the first schema-derived candidate and still validates it through the real mock API retry. This keeps the demo runnable without a paid API key; it is not an LLM decision in that fallback path.
+Install dependencies:
 
-For the included local authentication fixture, `MOCK_API_TOKEN` can be configured to match the mock server's token. Do not use demo credentials in production.
+```bash
+npm install
+```
 
-## Healing capabilities and limits
+### Configuration
 
-- **Counterfactual repair:** builds candidate tool definitions from the live schema; when configured, an LLM chooses among candidates and reports rejected alternatives/rationale.
-- **Blast-radius assessment:** compares changed tool dimensions against declared dependencies in the registry. The included demo starts with one tool, so its initial dependency blast radius is local; add registry entries with `id` and `dependsOn` metadata to assess multi-tool dependencies.
-- **Transactional rollback:** the active in-memory tool definition is restored if the candidate retry fails. This does not reverse side effects already performed by an external service.
-- **OpenAPI registry:** schema snapshots are emitted as OpenAPI 3.1 documents and versioned in memory; a successful repair marks its observed specification as known-good for this demo.
-- **No digital twin:** no digital-twin/sandbox subsystem is included.
+Configure the environment variables required by the application and its enabled integrations.
 
-Run `npm test` to execute the project's automated tests.
+If the project uses an LLM provider, supply its API key through an environment variable. Do not commit secrets or production credentials to GitHub.
+
+### Run the Application
+
+Use the start command defined in `package.json`.
+
+For example, if the project defines a start script:
+
+```bash
+npm start
+```
+
+Refer to the project's actual scripts and configuration for the correct execution command.
+
+## 📊 Evaluation Metrics
+
+Sentinel can be evaluated using the following metrics:
+
+- **Mean Time to Recovery (MTTR):** Average time required to restore successful API behavior after a failure.
+- **Zero-Adaptation Rate:** Percentage of supported API changes handled without manual code modification, according to a clearly defined test set.
+- **Repair Success Rate:** Percentage of repair attempts that successfully restore the expected behavior.
+- **Regression Rate:** Frequency with which a repair introduces new failures.
+- **Recovery Overhead:** Additional latency, compute, or API calls introduced by the healing process.
+
+These metrics should be reported using measured test results rather than assumed performance figures.
+
+## 🔒 Safety Considerations
+
+- Validate repair candidates before applying changes.
+- Restrict the actions available to the agent.
+- Protect API credentials and sensitive response data.
+- Evaluate downstream dependencies before changing shared behavior.
+- Verify the outcome of a repair.
+- Use rollback mechanisms where supported.
+- Require appropriate safeguards before making changes to production systems.
+
+AI-generated recommendations should not automatically be treated as safe or correct.
+
+## 🔮 Future Scope
+
+Potential extensions include:
+
+- Live monitoring of production API integrations.
+- Broader support for OpenAPI-compatible services.
+- Sandboxed execution of candidate repairs.
+- Automated regression testing before deployment.
+- Dependency-aware repair prioritization.
+- Observability dashboards and recovery histories.
+- Approval workflows for high-impact changes.
+- Expanded support for authentication failures, rate limits, and transient network errors.
+
+These are potential extensions, not claims that every capability is already implemented.
+
+## 👥 Contributors
+
+Developed as a collaborative engineering project focused on API resilience, AI-assisted automation, and safer software recovery.
+
+Add contributor names and GitHub profiles here.
+
+## 📄 License
+
+Specify the project's chosen license before distributing or reusing the code publicly.
+
+---
+
+**Sentinel — Detect failures. Understand causes. Evaluate repairs. Recover safely.**
